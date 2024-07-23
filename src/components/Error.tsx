@@ -1,5 +1,3 @@
-import React from "react";
-
 export default function Error() {
   return (
     <section className="flex items-center h-screen p-16">

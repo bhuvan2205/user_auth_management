@@ -61,16 +61,19 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
       async (error) => {
         const originalRequest = error.config as CustomAxiosRequestConfig;
 
-        if (
-          (error.response.status === 401 || error.response.status === 403) &&
-          !originalRequest._retry
-        ) {
-          originalRequest._retry = true;
-          try {
+        try {
+          const refreshToken = localStorage.getItem("refreshToken");
+          if (
+            (error.response.status === 401 || error.response.status === 403) &&
+            !originalRequest._retry &&
+            refreshToken
+          ) {
+            originalRequest._retry = true;
+
             const response = await api.post(
               `${BASE_API_URL}/api/users/accessToken`,
               {
-                refreshToken: localStorage.getItem("refreshToken"),
+                refreshToken,
               }
             );
             const { data } = response || {};
@@ -82,11 +85,12 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
             originalRequest.headers.Authorization = `Bearer ${data?.accessToken}`;
 
             return api(originalRequest);
-          } catch (tokenRefreshError) {
-            setToken("");
-            localStorage.removeItem("refreshToken");
           }
+        } catch (error) {
+          setToken("");
+          localStorage.removeItem("refreshToken");
         }
+
         return Promise.reject(error);
       }
     );
@@ -94,7 +98,7 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       api.interceptors.response.eject(responseInterceptor);
     };
-  }, [token]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ token, setToken }}>
